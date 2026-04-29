@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZENUS</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --purple: #7c5cfc;
+    --purple-glow: rgba(124,92,252,0.25);
+    --purple-light: #a78bfa;
+    --gold: #f5c842;
+    --gold-dim: rgba(245,200,66,0.15);
+    --text: #ffffff;
+    --text-dim: #8888aa;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+
+  html, body { height: 100%; background: var(--bg); font-family: 'Space Grotesk', sans-serif; color: var(--text); overflow-x: hidden; }
+
+  /* NAV */
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-btn { flex: 1; padding: 12px 4px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--text-dim); font-size: 10px; font-family: inherit; cursor: pointer; transition: color 0.2s; }
+  .nav-btn.active { color: var(--purple-light); }
+  .nav-btn svg { width: 22px; height: 22px; }
+
+  /* PAGES */
+  .page { display: none; min-height: 100vh; padding: 0 0 80px; }
+  .page.active { display: block; }
+
+  /* HOME */
+  .home-header { background: linear-gradient(180deg, #1a0a3a 0%, var(--bg) 100%); padding: 48px 20px 32px; text-align: center; position: relative; overflow: hidden; }
+  .home-header::before { content: ''; position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 300px; height: 300px; background: radial-gradient(circle, var(--purple-glow) 0%, transparent 70%); }
+  .logo-ring { width: 100px; height: 100px; border-radius: 50%; background: var(--purple-glow); border: 2px solid var(--purple); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 48px; position: relative; z-index: 1; animation: pulse 3s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 var(--purple-glow)} 50%{box-shadow:0 0 30px 10px var(--purple-glow)} }
+  .logo-name { font-size: 28px; font-weight: 700; letter-spacing: 4px; color: var(--text); position: relative; z-index: 1; }
+  .logo-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; letter-spacing: 2px; position: relative; z-index: 1; }
+
+  .balance-card { margin: -16px 20px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 20px; text-align: center; }
+  .balance-label { font-size: 12px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+  .balance-amount { font-size: 40px; font-weight: 700; color: var(--gold); margin: 4px 0; }
+  .balance-unit { font-size: 14px; color: var(--text-dim); }
+
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 0 20px 20px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 700; color: var(--purple-light); }
+  .stat-lbl { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; padding: 0 20px; margin-bottom: 12px; }
+
+  /* TAREFAS */
+  .task-list { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+  .task-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.2s, transform 0.1s; }
+  .task-card:active { transform: scale(0.98); }
+  .task-card.done { opacity: 0.5; pointer-events: none; }
+  .task-card.done .task-arrow { display: none; }
+  .task-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--purple-glow); border: 1px solid var(--purple); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .task-info { flex: 1; }
+  .task-name { font-size: 14px; font-weight: 600; }
+  .task-reward { font-size: 12px; color: var(--gold); margin-top: 2px; }
+  .task-arrow { color: var(--text-dim); font-size: 18px; }
+  .task-done-badge { background: var(--green); color: white; font-size: 11px; padding: 3px 8px; border-radius: 20px; }
+
+  /* RANKING */
+  .rank-list { padding: 0 20px; display: flex; flex-direction: column; gap: 8px; }
+  .rank-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .rank-item.me { border-color: var(--purple); background: var(--purple-glow); }
+  .rank-pos { font-size: 16px; font-weight: 700; width: 28px; text-align: center; color: var(--text-dim); }
+  .rank-pos.gold { color: #f5c842; }
+  .rank-pos.silver { color: #c0c0c0; }
+  .rank-pos.bronze { color: #cd7f32; }
+  .rank-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--purple-glow); border: 1px solid var(--purple); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--purple-light); flex-shrink: 0; }
+  .rank-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .rank-coins { font-size: 13px; color: var(--gold); font-weight: 600; }
+
+  /* CONVITE */
+  .invite-box { margin: 0 20px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; text-align: center; }
+  .invite-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .invite-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+  .invite-rewards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .invite-reward { background: var(--surface); border-radius: 12px; padding: 14px; }
+  .invite-reward-val { font-size: 22px; font-weight: 700; color: var(--gold); }
+  .invite-reward-lbl { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .invite-link { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 12px; color: var(--text-dim); word-break: break-all; margin-bottom: 14px; }
+  .btn-purple { width: 100%; padding: 14px; background: var(--purple); border: none; border-radius: 14px; color: white; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; transition: opacity 0.2s; }
+  .btn-purple:active { opacity: 0.8; }
+
+  /* MODAL */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: flex-end; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 24px 24px 0 0; padding: 24px 20px 40px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+  .modal-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-size: 16px; font-family: inherit; margin-bottom: 14px; outline: none; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
+  .modal-input:focus { border-color: var(--purple); }
+  .modal-btn-row { display: flex; gap: 10px; }
+  .btn-cancel { flex: 1; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; color: var(--text-dim); font-size: 14px; font-family: inherit; cursor: pointer; }
+
+  /* TOAST */
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 20px; font-size: 14px; font-weight: 500; z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  .loader { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+  .spin { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .page-header { padding: 20px 20px 12px; font-size: 22px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL CÓDIGO VÍDEO -->
+<div class="modal-bg" id="modal-video">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-video-title">Inserir código</div>
+    <div class="modal-sub">Assista o vídeo até o final e digite o código secreto falado</div>
+    <input class="modal-input" id="modal-video-input" placeholder="CÓDIGO" maxlength="10">
+    <div class="modal-btn-row">
+      <button class="btn-cancel" onclick="closeModal('modal-video')">Cancelar</button>
+      <button class="btn-purple" style="flex:1" onclick="enviarCodigo()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR SEGUIU -->
+<div class="modal-bg" id="modal-rede">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-rede-titulo">Seguir rede</div>
+    <div class="modal-sub" id="modal-rede-sub">Clique no link, siga a conta e volte aqui para confirmar.</div>
+    <a id="modal-rede-link" href="#" target="_blank">
+      <button class="btn-purple" style="margin-bottom:10px">Abrir e seguir ↗</button>
+    </a>
+    <div class="modal-btn-row">
+      <button class="btn-cancel" onclick="closeModal('modal-rede')">Cancelar</button>
+      <button class="btn-purple" style="flex:1" onclick="confirmarSeguiu()">Já segui!</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: HOME -->
+<div class="page active" id="page-home">
+  <div class="home-header">
+    <div class="logo-ring">🪐</div>
+    <div class="logo-name">ZENUS</div>
+    <div class="logo-sub">COSMIC COIN</div>
+  </div>
+  <div class="balance-card">
+    <div class="balance-label">Seu saldo</div>
+    <div class="balance-amount" id="home-moedas">—</div>
+    <div class="balance-unit">ZENUS</div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" id="stat-videos">—</div>
+      <div class="stat-lbl">Vídeos</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-redes">—</div>
+      <div class="stat-lbl">Redes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-amigos">—</div>
+      <div class="stat-lbl">Amigos</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: TAREFAS -->
+<div class="page" id="page-tarefas">
+  <div class="page-header">Tarefas</div>
+  <div id="tarefas-content"><div class="loader"><div class="spin"></div><br>Carregando...</div></div>
+</div>
+
+<!-- PAGE: RANKING -->
+<div class="page" id="page-ranking">
+  <div class="page-header">Ranking</div>
+  <div class="rank-list" id="ranking-list"><div class="loader"><div class="spin"></div><br>Carregando...</div></div>
+</div>
+
+<!-- PAGE: CONVITE -->
+<div class="page" id="page-convite">
+  <div class="page-header">Convidar</div>
+  <div class="invite-box">
+    <div class="invite-title">👥 Convide amigos</div>
+    <div class="invite-desc">Ganhe ZENUS por cada amigo que entrar usando seu link</div>
+    <div class="invite-rewards">
+      <div class="invite-reward">
+        <div class="invite-reward-val">+200</div>
+        <div class="invite-reward-lbl">Você ganha</div>
+      </div>
+      <div class="invite-reward">
+        <div class="invite-reward-val">+100</div>
+        <div class="invite-reward-lbl">Seu amigo ganha</div>
+      </div>
+    </div>
+    <div class="invite-link" id="invite-link-text">Carregando...</div>
+    <button class="btn-purple" onclick="copiarLink()">Copiar link de convite</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="goPage('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3l9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg>
+    Início
+  </button>
+  <button class="nav-btn" onclick="goPage('tarefas',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+    Tarefas
+  </button>
+  <button class="nav-btn" onclick="goPage('ranking',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-6"/></svg>
+    Ranking
+  </button>
+  <button class="nav-btn" onclick="goPage('convite',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    Convidar
+  </button>
+</nav>
+
+<script>
+// =============================================
+//   CONFIG
+// =============================================
+const API = "https://SEU-BACKEND.railway.app"; // ← Troque pela URL do Railway
+
+// =============================================
+//   INIT
+// =============================================
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const params = new URLSearchParams(location.search);
+const UID = params.get("uid") || (tg?.initDataUnsafe?.user?.id?.toString());
+
+let userData = null;
+let videoAtivo = null;
+let redeAtiva = null;
+
+async function init() {
+  if (!UID) { document.body.innerHTML = '<div class="loader">Acesse pelo Telegram</div>'; return; }
+  await carregarUsuario();
+  await carregarTarefas();
+  await carregarRanking();
+}
+
+async function carregarUsuario() {
+  try {
+    const r = await fetch(`${API}/api/user/${UID}`);
+    userData = await r.json();
+    document.getElementById("home-moedas").textContent = userData.moedas.toLocaleString();
+    document.getElementById("stat-videos").textContent = `${userData.videos_assistidos.length}/${userData.videos.length}`;
+    document.getElementById("stat-redes").textContent = `${userData.redes_seguidas.length}/${Object.keys(userData.redes).length}`;
+    document.getElementById("stat-amigos").textContent = userData.referrals;
+    document.getElementById("invite-link-text").textContent = userData.referral_link;
+  } catch(e) { showToast("Erro ao carregar dados", "error"); }
+}
+
+async function carregarTarefas() {
+  if (!userData) return;
+  const hoje_missoes = userData.missoes_feitas_hoje || [];
+  let html = "";
+
+  // Missões diárias
+  html += `<div class="section-title" style="margin-top:8px">Missões diárias</div><div class="task-list">`;
+  for (const m of userData.missoes) {
+    const done = hoje_missoes.includes(m.id);
+    html += `<div class="task-card ${done?'done':''}" onclick="fazerMissao('${m.id}')">
+      <div class="task-icon">⭐</div>
+      <div class="task-info">
+        <div class="task-name">${m.titulo}</div>
+        <div class="task-reward">+${m.moedas} ZENUS</div>
+      </div>
+      ${done ? '<span class="task-done-badge">✓ Feito</span>' : '<span class="task-arrow">›</span>'}
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Vídeos
+  html += `<div class="section-title" style="margin-top:20px">Assistir vídeos</div><div class="task-list">`;
+  for (const v of userData.videos) {
+    const done = userData.videos_assistidos.includes(v.id);
+    html += `<div class="task-card ${done?'done':''}" onclick="abrirVideo('${v.id}','${v.titulo}','${v.url}')">
+      <div class="task-icon">🎬</div>
+      <div class="task-info">
+        <div class="task-name">${v.titulo}</div>
+        <div class="task-reward">+${v.moedas} ZENUS</div>
+      </div>
+      ${done ? '<span class="task-done-badge">✓ Assistido</span>' : '<span class="task-arrow">›</span>'}
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Redes sociais
+  html += `<div class="section-title" style="margin-top:20px">Seguir redes sociais</div><div class="task-list">`;
+  for (const [rid, r] of Object.entries(userData.redes)) {
+    const done = userData.redes_seguidas.includes(rid);
+    html += `<div class="task-card ${done?'done':''}" onclick="abrirRede('${rid}','${r.nome}','${r.url}',${r.moedas})">
+      <div class="task-icon">${r.emoji}</div>
+      <div class="task-info">
+        <div class="task-name">Seguir ${r.nome}</div>
+        <div class="task-reward">+${r.moedas} ZENUS</div>
+      </div>
+      ${done ? '<span class="task-done-badge">✓ Seguido</span>' : '<span class="task-arrow">›</span>'}
+    </div>`;
+  }
+  html += `</div><div style="height:20px"></div>`;
+
+  document.getElementById("tarefas-content").innerHTML = html;
+}
+
+async function carregarRanking() {
+  try {
+    const r = await fetch(`${API}/api/ranking`);
+    const lista = await r.json();
+    const medals = ["🥇","🥈","🥉"];
+    const posClasses = ["gold","silver","bronze"];
+    let html = "";
+    for (const item of lista) {
+      const isMe = item.nome === userData?.nome;
+      const medal = item.pos <= 3 ? medals[item.pos-1] : item.pos;
+      const cls = item.pos <= 3 ? posClasses[item.pos-1] : "";
+      const inicial = (item.nome||"?")[0].toUpperCase();
+      html += `<div class="rank-item ${isMe?'me':''}">
+        <div class="rank-pos ${cls}">${medal}</div>
+        <div class="rank-avatar">${inicial}</div>
+        <div class="rank-name">${item.nome}</div>
+        <div class="rank-coins">${item.moedas.toLocaleString()} Z</div>
+      </div>`;
+    }
+    document.getElementById("ranking-list").innerHTML = html || "<div class='loader'>Nenhum jogador ainda</div>";
+  } catch(e) {}
+}
+
+// =============================================
+//   AÇÕES
+// =============================================
+
+function abrirVideo(id, titulo, url) {
+  videoAtivo = { id, url };
+  document.getElementById("modal-video-title").textContent = titulo;
+  document.getElementById("modal-video-input").value = "";
+  openModal("modal-video");
+  window.open(url, "_blank");
+}
+
+async function enviarCodigo() {
+  if (!videoAtivo) return;
+  const codigo = document.getElementById("modal-video-input").value.trim();
+  if (!codigo) return showToast("Digite o código!", "error");
+  try {
+    const r = await fetch(`${API}/api/video/${UID}/${videoAtivo.id}`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ codigo })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      closeModal("modal-video");
+      showToast(`+${data.ganhou} ZENUS! 🎉`, "success");
+      await carregarUsuario();
+      await carregarTarefas();
+    } else {
+      showToast(data.msg, "error");
+    }
+  } catch(e) { showToast("Erro de conexão", "error"); }
+}
+
+function abrirRede(rid, nome, url, moedas) {
+  redeAtiva = { rid, nome, url, moedas };
+  document.getElementById("modal-rede-titulo").textContent = `Seguir ${nome}`;
+  document.getElementById("modal-rede-sub").textContent = `Clique abaixo, siga @${nome} e volte para confirmar. Você ganha +${moedas} ZENUS.`;
+  document.getElementById("modal-rede-link").href = url;
+  openModal("modal-rede");
+}
+
+async function confirmarSeguiu() {
+  if (!redeAtiva) return;
+  try {
+    const r = await fetch(`${API}/api/seguir/${UID}/${redeAtiva.rid}`, { method: "POST" });
+    const data = await r.json();
+    if (data.ok) {
+      closeModal("modal-rede");
+      showToast(`+${data.ganhou} ZENUS! 🎉`, "success");
+      await carregarUsuario();
+      await carregarTarefas();
+    } else {
+      showToast(data.msg, "error");
+    }
+  } catch(e) { showToast("Erro de conexão", "error"); }
+}
+
+async function fazerMissao(mid) {
+  try {
+    const r = await fetch(`${API}/api/missao/${UID}/${mid}`, { method: "POST" });
+    const data = await r.json();
+    if (data.ok) {
+      showToast(`+${data.ganhou} ZENUS! ⭐`, "success");
+      await carregarUsuario();
+      await carregarTarefas();
+    } else {
+      showToast(data.msg, "error");
+    }
+  } catch(e) { showToast("Erro de conexão", "error"); }
+}
+
+function copiarLink() {
+  const link = document.getElementById("invite-link-text").textContent;
+  navigator.clipboard.writeText(link).then(() => showToast("Link copiado!", "success"));
+}
+
+// =============================================
+//   UI HELPERS
+// =============================================
+
+function goPage(name, btn) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("page-"+name).classList.add("active");
+  btn.classList.add("active");
+}
+
+function openModal(id) { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+let toastTimer;
+function showToast(msg, type="") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+// Fechar modal clicando fora
+document.querySelectorAll(".modal-bg").forEach(bg => {
+  bg.addEventListener("click", e => { if (e.target === bg) bg.classList.remove("open"); });
+});
+
+init();
+</script>
+</body>
+</html>

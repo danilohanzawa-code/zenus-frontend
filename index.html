@@ -118,6 +118,12 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .page-header { padding: 20px 20px 12px; font-size: 22px; font-weight: 700; }
+
+  /* ERRO UID */
+  .erro-uid { text-align: center; padding: 60px 30px; }
+  .erro-uid .emoji { font-size: 60px; margin-bottom: 16px; }
+  .erro-uid h2 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+  .erro-uid p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -240,7 +246,7 @@
 // =============================================
 //   CONFIG
 // =============================================
-const API = "https://web-production-6c35.up.railway.app"; // ← Troque pela URL do Railway
+const API = "https://web-production-6c35.up.railway.app";
 
 // =============================================
 //   INIT
@@ -248,6 +254,7 @@ const API = "https://web-production-6c35.up.railway.app"; // ← Troque pela URL
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
+// ✅ FIX: pega UID da URL ou do Telegram WebApp
 const params = new URLSearchParams(location.search);
 const UID = params.get("uid") || (tg?.initDataUnsafe?.user?.id?.toString());
 
@@ -256,7 +263,16 @@ let videoAtivo = null;
 let redeAtiva = null;
 
 async function init() {
-  if (!UID) { document.body.innerHTML = '<div class="loader">Acesse pelo Telegram</div>'; return; }
+  // ✅ FIX: se não tem UID, mostra mensagem amigável em vez de tela branca
+  if (!UID) {
+    document.body.innerHTML = `
+      <div class="erro-uid">
+        <div class="emoji">🪐</div>
+        <h2>Acesse pelo Telegram</h2>
+        <p>Abra o ZENUS pelo bot oficial:<br><strong>@ZenusOfficial_bot</strong></p>
+      </div>`;
+    return;
+  }
   await carregarUsuario();
   await carregarTarefas();
   await carregarRanking();
@@ -265,13 +281,21 @@ async function init() {
 async function carregarUsuario() {
   try {
     const r = await fetch(`${API}/api/user/${UID}`);
+    // ✅ FIX: verifica se a resposta foi ok antes de parsear
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     userData = await r.json();
     document.getElementById("home-moedas").textContent = userData.moedas.toLocaleString();
     document.getElementById("stat-videos").textContent = `${userData.videos_assistidos.length}/${userData.videos.length}`;
     document.getElementById("stat-redes").textContent = `${userData.redes_seguidas.length}/${Object.keys(userData.redes).length}`;
     document.getElementById("stat-amigos").textContent = userData.referrals;
     document.getElementById("invite-link-text").textContent = userData.referral_link;
-  } catch(e) { showToast("Erro ao carregar dados", "error"); }
+  } catch(e) {
+    // ✅ FIX: mostra erro mais claro com tentativa de reconexão
+    console.error("Erro ao carregar usuário:", e);
+    showToast("Erro ao carregar dados. Tentando novamente...", "error");
+    // Tenta reconectar após 3 segundos
+    setTimeout(() => carregarUsuario(), 3000);
+  }
 }
 
 async function carregarTarefas() {
@@ -330,6 +354,7 @@ async function carregarTarefas() {
 async function carregarRanking() {
   try {
     const r = await fetch(`${API}/api/ranking`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const lista = await r.json();
     const medals = ["🥇","🥈","🥉"];
     const posClasses = ["gold","silver","bronze"];
@@ -347,7 +372,9 @@ async function carregarRanking() {
       </div>`;
     }
     document.getElementById("ranking-list").innerHTML = html || "<div class='loader'>Nenhum jogador ainda</div>";
-  } catch(e) {}
+  } catch(e) {
+    document.getElementById("ranking-list").innerHTML = "<div class='loader'>Erro ao carregar ranking</div>";
+  }
 }
 
 // =============================================
